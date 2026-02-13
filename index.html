@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Skills Heatmap</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #f5f5f5;
+  }
+  
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  h1 {
+    margin: 0 0 24px 0;
+    color: #1a1a1a;
+    font-size: 24px;
+  }
+  
+  .summary {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  
+  .summary-card {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 6px;
+    flex: 1;
+    min-width: 150px;
+  }
+  
+  .summary-label {
+    font-size: 12px;
+    color: #666;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  
+  .summary-value {
+    font-size: 28px;
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+  
+  .filters {
+    margin-bottom: 24px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  
+  .view-toggle {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  
+  .view-toggle-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+  }
+  
+  .filter-btn {
+    padding: 8px 16px;
+    border: 2px solid #ddd;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+  
+  .filter-btn:hover {
+    border-color: #999;
+  }
+  
+  .filter-btn.active {
+    background: #4a5568;
+    color: white;
+    border-color: #4a5568;
+  }
+  
+  .filter-btn.contractors.active {
+    background: #f97316;
+    border-color: #f97316;
+  }
+  
+  .filter-btn.ftes.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+  }
+  
+  .view-btn {
+    padding: 8px 16px;
+    border: 2px solid #ddd;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+  
+  .view-btn:hover {
+    border-color: #999;
+  }
+  
+  .view-btn.active {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
+  }
+  
+  .table-container {
+    overflow-x: auto;
+    margin-bottom: 32px;
+  }
+  
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+  }
+  
+  th, td {
+    border: 1px solid #e0e0e0;
+    text-align: center;
+    padding: 8px 4px;
+    font-size: 12px;
+  }
+  
+  th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #1a1a1a;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  
+  th.team-header {
+    text-align: left;
+    width: 120px;
+    padding-left: 12px;
+  }
+  
+  th.total-header {
+    width: 50px;
+  }
+  
+  th.skill-header {
+    width: 50px;
+    height: 120px;
+    position: relative;
+    vertical-align: bottom;
+    padding: 0;
+  }
+  
+  th.type-subheader {
+    width: 25px;
+    height: 30px;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 4px 2px;
+  }
+  
+  .skill-label {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%) rotate(-45deg);
+    transform-origin: bottom left;
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  
+  td.team-cell {
+    text-align: left;
+    font-weight: 500;
+    padding-left: 12px;
+    background: #fafafa;
+  }
+  
+  td.count-cell {
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 25px;
+  }
+  
+  td.count-cell:hover {
+    background: #f0f0f0 !important;
+    transform: scale(1.05);
+  }
+  
+  .no-coverage {
+    background: #f5f5f5;
+  }
+  
+  .low-coverage {
+    background: #fff4e6;
+  }
+  
+  .medium-coverage {
+    background: #ffedd5;
+  }
+  
+  .high-coverage {
+    background: #fed7aa;
+  }
+  
+  .detail-panel {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-top: 24px;
+    display: none;
+    border: 2px solid #e0e0e0;
+  }
+  
+  .detail-panel.visible {
+    display: block;
+  }
+  
+  .detail-title {
+    font-weight: 600;
+    font-size: 18px;
+    margin-bottom: 16px;
+    color: #1a1a1a;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e0e0e0;
+  }
+  
+  .detail-item {
+    margin-bottom: 12px;
+    font-size: 14px;
+    display: flex;
+    gap: 8px;
+  }
+  
+  .detail-label {
+    font-weight: 600;
+    color: #666;
+    min-width: 100px;
+  }
+  
+  .detail-value {
+    color: #1a1a1a;
+  }
+  
+  .close-btn {
+    float: right;
+    background: #f0f0f0;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #666;
+    transition: all 0.2s;
+  }
+  
+  .close-btn:hover {
+    background: #e0e0e0;
+    color: #333;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Team Skills Heatmap</h1>
+  
+  <div class="summary" id="summary">
+    <!-- Summary cards will be inserted here -->
+  </div>
+  
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('all')" id="filter-all">Everyone (<span id="count-all">0</span>)</button>
+    <button class="filter-btn contractors" onclick="setFilter('contractor')" id="filter-contractor">Contractors Only (<span id="count-contractor">0</span>)</button>
+    <button class="filter-btn ftes" onclick="setFilter('fte')" id="filter-fte">FTEs Only (<span id="count-fte">0</span>)</button>
+    
+    <div class="view-toggle">
+      <span class="view-toggle-label">View:</span>
+      <button class="view-btn" onclick="setView('combined')" id="view-combined">Combined</button>
+      <button class="view-btn active" onclick="setView('detailed')" id="view-detailed">Detailed</button>
+    </div>
+  </div>
+  
+  <div class="table-container">
+    <table id="heatmap">
+      <!-- Table will be generated here -->
+    </table>
+  </div>
+  
+  <div class="detail-panel" id="detail-panel">
+    <button class="close-btn" onclick="closeDetail()">Close</button>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<script>
+const teamData = [
+  {
+    team: "Web Commerce",
+    total: 18,
+    skills: {
+      "Agile Leads": {Contractor: 1},
+      "SFCC": {FTE: 4},
+      "Frontend": {Contractor: 3, FTE: 2},
+      "Full Stack": {Contractor: 4, FTE: 1},
+      "Backend": {FTE: 1},
+      "SDET": {FTE: 2}
+    }
+  },
+  {
+    team: "MET",
+    total: 5,
+    skills: {
+      "Frontend": {Contractor: 1},
+      "Full Stack": {Contractor: 1, FTE: 1},
+      "SDET": {Contractor: 1},
+      "Data Eng.": {Contractor: 1}
+    }
+  },
+  {
+    team: "Professional Web",
+    total: 5,
+    skills: {
+      "UI": {Contractor: 1},
+      "Frontend": {Contractor: 1},
+      "Full Stack": {Contractor: 2},
+      "SDET": {Contractor: 1}
+    }
+  },
+  {
+    team: "Subscriptions",
+    total: 6,
+    skills: {
+      "Backend": {Contractor: 1},
+      "Salesforce": {Contractor: 2, FTE: 1},
+      "SDET": {Contractor: 1},
+      "Boomi": {FTE: 1}
+    }
+  },
+  {
+    team: "Partners (CRM)",
+    total: 9,
+    skills: {
+      "Agile Leads": {Contractor: 1},
+      "BA": {Contractor: 1},
+      "Salesforce": {Contractor: 4, FTE: 2},
+      "SDET": {Contractor: 1}
+    }
+  },
+  {
+    team: "CX Teams - CRM",
+    total: 7,
+    skills: {
+      "Frontend": {Contractor: 1},
+      "BA": {Contractor: 1},
+      "Salesforce": {Contractor: 2, FTE: 2},
+      "SDET": {Contractor: 1}
+    }
+  },
+  {
+    team: "CX Teams - CareDev",
+    total: 9,
+    skills: {
+      "Agile Leads": {Contractor: 1},
+      "Full Stack": {Contractor: 2, FTE: 2},
+      "Backend": {Contractor: 1},
+      "BA": {Contractor: 1},
+      "SDET": {Contractor: 1}
+    }
+  },
+  {
+    team: "HW Order Fulfillment",
+    total: 13,
+    skills: {
+      "Agile Leads": {Contractor: 1},
+      "Salesforce": {Contractor: 2, FTE: 1},
+      "SDET": {Contractor: 1},
+      "Boomi": {FTE: 1},
+      "SAP SD": {Contractor: 3, FTE: 3},
+      "SAP ABAP": {Contractor: 1}
+    }
+  },
+  {
+    team: "HW Returns",
+    total: 4,
+    skills: {
+      "BA": {Contractor: 1},
+      "Salesforce": {Contractor: 2},
+      "SAP SD": {FTE: 1}
+    }
+  },
+  {
+    team: "Demand to Supply",
+    total: 6,
+    skills: {
+      "Boomi": {FTE: 1},
+      "SAP MM": {Contractor: 2, FTE: 2},
+      "SAP ABAP": {FTE: 1}
+    }
+  },
+  {
+    team: "Finance Operations",
+    total: 4,
+    skills: {
+      "SAP FICO": {Contractor: 2, FTE: 1},
+      "SAP ABAP": {Contractor: 1}
+    }
+  },
+  {
+    team: "HW Systems",
+    total: 9,
+    skills: {
+      "Agile Leads": {Contractor: 1},
+      "Anaplan": {FTE: 1},
+      "CAD": {FTE: 2},
+      "PLM Admin": {Contractor: 1, FTE: 2},
+      "Data Eng.": {Contractor: 1, FTE: 2}
+    }
+  },
+  {
+    team: "Data Analytics",
+    total: 17,
+    skills: {
+      "SAP Rpt": {Contractor: 1, FTE: 1},
+      "Data Eng.": {Contractor: 6, FTE: 9}
+    }
+  },
+  {
+    team: "Ent. Plat. Ops",
+    total: 8,
+    skills: {
+      "SAP BASIS": {Contractor: 3},
+      "SAP Security": {FTE: 1},
+      "Dev Ops": {FTE: 1},
+      "EDI": {FTE: 1},
+      "Boomi": {Contractor: 1, FTE: 1},
+      "Release Mgmt": {FTE: 1}
+    }
+  }
+];
+
+const allSkills = [
+  "Agile Leads", "UI", "SFCC", "Frontend", "Full Stack", "Backend", "BA", 
+  "Salesforce", "SDET", "Boomi", "SAP SD", "SAP MM", "SAP FICO", "SAP ABAP", 
+  "SAP BASIS", "Anaplan", "CAD", "PLM Admin", "SAP Security", "Dev Ops", 
+  "EDI", "Release Mgmt", "SAP Rpt", "Data Eng."
+];
+
+let currentFilter = 'all';
+let currentView = 'detailed'; // 'detailed' or 'combined'
+
+function getCount(skill, type) {
+  if (currentFilter === 'all') {
+    return (skill.Contractor || 0) + (skill.FTE || 0);
+  } else if (currentFilter === 'contractor') {
+    return skill.Contractor || 0;
+  } else {
+    return skill.FTE || 0;
+  }
+}
+
+function getCellClass(count) {
+  if (count === 0) return 'no-coverage';
+  if (count === 1) return 'low-coverage';
+  if (count <= 4) return 'medium-coverage';
+  return 'high-coverage';
+}
+
+function setView(view) {
+  currentView = view;
+  
+  document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(`view-${view}`).classList.add('active');
+  
+  renderTable();
+}
+
+function renderTable() {
+  const table = document.getElementById('heatmap');
+  let html = '<thead>';
+  
+  if (currentView === 'detailed') {
+    // Detailed view with separate CTR and FTE columns
+    // First header row - skill names spanning 2 columns each
+    html += '<tr>';
+    html += '<th class="team-header" rowspan="2">Team</th>';
+    html += '<th class="total-header" rowspan="2">Total</th>';
+    
+    allSkills.forEach(skill => {
+      html += `<th class="skill-header" colspan="2"><div class="skill-label">${skill}</div></th>`;
+    });
+    
+    html += '</tr>';
+    
+    // Second header row - CTR/FTE labels
+    html += '<tr>';
+    allSkills.forEach(skill => {
+      html += '<th class="type-subheader">CTR</th>';
+      html += '<th class="type-subheader">FTE</th>';
+    });
+    html += '</tr>';
+    
+    html += '</thead><tbody>';
+    
+    // Calculate totals for each skill
+    const skillTotals = {};
+    allSkills.forEach(skill => {
+      skillTotals[skill] = {Contractor: 0, FTE: 0};
+    });
+    
+    teamData.forEach(team => {
+      html += '<tr>';
+      html += `<td class="team-cell">${team.team}</td>`;
+      
+      let teamTotal = 0;
+      allSkills.forEach(skill => {
+        if (team.skills[skill]) {
+          if (currentFilter === 'all') {
+            teamTotal += (team.skills[skill].Contractor || 0) + (team.skills[skill].FTE || 0);
+          } else if (currentFilter === 'contractor') {
+            teamTotal += team.skills[skill].Contractor || 0;
+          } else {
+            teamTotal += team.skills[skill].FTE || 0;
+          }
+          
+          // Accumulate totals
+          skillTotals[skill].Contractor += team.skills[skill].Contractor || 0;
+          skillTotals[skill].FTE += team.skills[skill].FTE || 0;
+        }
+      });
+      
+      html += `<td>${teamTotal.toFixed(1).replace('.0', '')}</td>`;
+      
+      allSkills.forEach(skill => {
+        const skillData = team.skills[skill];
+        const ctrCount = skillData ? (skillData.Contractor || 0) : 0;
+        const fteCount = skillData ? (skillData.FTE || 0) : 0;
+        
+        // CTR column
+        if (currentFilter === 'all' || currentFilter === 'contractor') {
+          const ctrClass = getCellClass(ctrCount);
+          const displayCtr = ctrCount > 0 ? ctrCount.toFixed(1).replace('.0', '') : '';
+          html += `<td class="count-cell ${ctrClass}" onclick='showDetail("${team.team}", "${skill}", "Contractor")'>`;
+          html += displayCtr;
+          html += '</td>';
+        } else {
+          html += '<td class="count-cell no-coverage"></td>';
+        }
+        
+        // FTE column
+        if (currentFilter === 'all' || currentFilter === 'fte') {
+          const fteClass = getCellClass(fteCount);
+          const displayFte = fteCount > 0 ? fteCount.toFixed(1).replace('.0', '') : '';
+          html += `<td class="count-cell ${fteClass}" onclick='showDetail("${team.team}", "${skill}", "FTE")'>`;
+          html += displayFte;
+          html += '</td>';
+        } else {
+          html += '<td class="count-cell no-coverage"></td>';
+        }
+      });
+      
+      html += '</tr>';
+    });
+    
+    // Add totals row
+    html += '<tr style="border-top: 3px solid #666;">';
+    html += '<td class="team-cell" style="font-weight: 700;">Grand Total</td>';
+    
+    // Calculate grand total
+    let grandTotal = 0;
+    allSkills.forEach(skill => {
+      if (currentFilter === 'all') {
+        grandTotal += skillTotals[skill].Contractor + skillTotals[skill].FTE;
+      } else if (currentFilter === 'contractor') {
+        grandTotal += skillTotals[skill].Contractor;
+      } else {
+        grandTotal += skillTotals[skill].FTE;
+      }
+    });
+    
+    html += `<td style="font-weight: 700;">${grandTotal.toFixed(1).replace('.0', '')}</td>`;
+    
+    allSkills.forEach(skill => {
+      const ctrTotal = skillTotals[skill].Contractor;
+      const fteTotal = skillTotals[skill].FTE;
+      
+      // CTR total
+      if (currentFilter === 'all' || currentFilter === 'contractor') {
+        const displayCtr = ctrTotal > 0 ? ctrTotal.toFixed(1).replace('.0', '') : '';
+        html += `<td style="font-weight: 700; background: #f0f0f0; cursor: pointer;" class="count-cell" onclick='showGrandTotalDetail("${skill}", "Contractor")'>${displayCtr}</td>`;
+      } else {
+        html += '<td style="background: #f0f0f0;"></td>';
+      }
+      
+      // FTE total
+      if (currentFilter === 'all' || currentFilter === 'fte') {
+        const displayFte = fteTotal > 0 ? fteTotal.toFixed(1).replace('.0', '') : '';
+        html += `<td style="font-weight: 700; background: #f0f0f0; cursor: pointer;" class="count-cell" onclick='showGrandTotalDetail("${skill}", "FTE")'>${displayFte}</td>`;
+      } else {
+        html += '<td style="background: #f0f0f0;"></td>';
+      }
+    });
+    
+    html += '</tr>';
+    
+  } else {
+    // Combined view - single column per skill
+    html += '<tr>';
+    html += '<th class="team-header">Team</th>';
+    html += '<th class="total-header">Total</th>';
+    
+    allSkills.forEach(skill => {
+      html += `<th class="skill-header"><div class="skill-label">${skill}</div></th>`;
+    });
+    
+    html += '</tr></thead><tbody>';
+    
+    // Calculate totals for each skill
+    const skillTotals = {};
+    allSkills.forEach(skill => {
+      skillTotals[skill] = {Contractor: 0, FTE: 0};
+    });
+    
+    teamData.forEach(team => {
+      html += '<tr>';
+      html += `<td class="team-cell">${team.team}</td>`;
+      
+      let teamTotal = 0;
+      allSkills.forEach(skill => {
+        if (team.skills[skill]) {
+          teamTotal += getCount(team.skills[skill], currentFilter);
+          
+          // Accumulate totals
+          skillTotals[skill].Contractor += team.skills[skill].Contractor || 0;
+          skillTotals[skill].FTE += team.skills[skill].FTE || 0;
+        }
+      });
+      
+      html += `<td>${teamTotal.toFixed(1).replace('.0', '')}</td>`;
+      
+      allSkills.forEach(skill => {
+        const skillData = team.skills[skill];
+        const count = skillData ? getCount(skillData, currentFilter) : 0;
+        const cellClass = getCellClass(count);
+        const displayCount = count > 0 ? count.toFixed(1).replace('.0', '') : '';
+        
+        html += `<td class="count-cell ${cellClass}" onclick='showDetail("${team.team}", "${skill}", "Combined")'>`;
+        html += displayCount;
+        html += '</td>';
+      });
+      
+      html += '</tr>';
+    });
+    
+    // Add totals row
+    html += '<tr style="border-top: 3px solid #666;">';
+    html += '<td class="team-cell" style="font-weight: 700;">Grand Total</td>';
+    
+    // Calculate grand total
+    let grandTotal = 0;
+    allSkills.forEach(skill => {
+      if (currentFilter === 'all') {
+        grandTotal += skillTotals[skill].Contractor + skillTotals[skill].FTE;
+      } else if (currentFilter === 'contractor') {
+        grandTotal += skillTotals[skill].Contractor;
+      } else {
+        grandTotal += skillTotals[skill].FTE;
+      }
+    });
+    
+    html += `<td style="font-weight: 700;">${grandTotal.toFixed(1).replace('.0', '')}</td>`;
+    
+    allSkills.forEach(skill => {
+      let total = 0;
+      if (currentFilter === 'all') {
+        total = skillTotals[skill].Contractor + skillTotals[skill].FTE;
+      } else if (currentFilter === 'contractor') {
+        total = skillTotals[skill].Contractor;
+      } else {
+        total = skillTotals[skill].FTE;
+      }
+      
+      const displayTotal = total > 0 ? total.toFixed(1).replace('.0', '') : '';
+      html += `<td style="font-weight: 700; background: #f0f0f0; cursor: pointer;" class="count-cell" onclick='showGrandTotalDetail("${skill}", "Combined")'>${displayTotal}</td>`;
+    });
+    
+    html += '</tr>';
+  }
+  
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+function updateSummary() {
+  let totalAll = 0, totalContractor = 0, totalFTE = 0;
+  
+  teamData.forEach(team => {
+    Object.values(team.skills).forEach(skill => {
+      totalContractor += skill.Contractor || 0;
+      totalFTE += skill.FTE || 0;
+    });
+  });
+  
+  totalAll = totalContractor + totalFTE;
+  
+  document.getElementById('count-all').textContent = totalAll.toFixed(1).replace('.0', '');
+  document.getElementById('count-contractor').textContent = totalContractor.toFixed(1).replace('.0', '');
+  document.getElementById('count-fte').textContent = totalFTE.toFixed(1).replace('.0', '');
+  
+  const summary = document.getElementById('summary');
+  summary.innerHTML = `
+    <div class="summary-card">
+      <div class="summary-label">Total Headcount</div>
+      <div class="summary-value">${totalAll.toFixed(1).replace('.0', '')}</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Contractors</div>
+      <div class="summary-value" style="color: #f97316">${totalContractor.toFixed(1).replace('.0', '')}</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">FTEs</div>
+      <div class="summary-value" style="color: #3b82f6">${totalFTE.toFixed(1).replace('.0', '')}</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Unique Skills</div>
+      <div class="summary-value">${allSkills.length}</div>
+    </div>
+  `;
+}
+
+function setFilter(filter) {
+  currentFilter = filter;
+  
+  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(`filter-${filter}`).classList.add('active');
+  
+  renderTable();
+}
+
+function showDetail(teamName, skillName, type) {
+  const team = teamData.find(t => t.team === teamName);
+  const skillData = team.skills[skillName];
+  
+  if (!skillData) {
+    return;
+  }
+  
+  const contractor = skillData.Contractor || 0;
+  const fte = skillData.FTE || 0;
+  const total = contractor + fte;
+  
+  const content = `
+    <div class="detail-title">
+      ${teamName} - ${skillName}
+    </div>
+    <div class="detail-item">
+      <span class="detail-label">Selected View:</span>
+      <span class="detail-value">${type}</span>
+    </div>
+    <div class="detail-item">
+      <span class="detail-label">Total:</span>
+      <span class="detail-value">${total.toFixed(1).replace('.0', '')}</span>
+    </div>
+    <div class="detail-item">
+      <span class="detail-label">Contractors:</span>
+      <span class="detail-value">${contractor.toFixed(1).replace('.0', '')} CTR</span>
+    </div>
+    <div class="detail-item">
+      <span class="detail-label">FTEs:</span>
+      <span class="detail-value">${fte.toFixed(1).replace('.0', '')} FTE</span>
+    </div>
+  `;
+  
+  document.getElementById('detail-content').innerHTML = content;
+  document.getElementById('detail-panel').classList.add('visible');
+  
+  // Scroll to the detail panel
+  document.getElementById('detail-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function showGrandTotalDetail(skillName, type) {
+  // Collect all teams that have this skill with non-zero counts
+  const teamsWithSkill = [];
+  
+  teamData.forEach(team => {
+    if (team.skills[skillName]) {
+      const skillData = team.skills[skillName];
+      const contractor = skillData.Contractor || 0;
+      const fte = skillData.FTE || 0;
+      
+      if (type === 'Combined') {
+        // Combined view - show both CTR and FTE
+        if (contractor > 0 || fte > 0) {
+          teamsWithSkill.push({
+            team: team.team,
+            contractor: contractor,
+            fte: fte,
+            total: contractor + fte
+          });
+        }
+      } else if (type === 'Contractor') {
+        // Detailed view - CTR column
+        if (contractor > 0) {
+          teamsWithSkill.push({
+            team: team.team,
+            contractor: contractor,
+            fte: 0,
+            total: contractor
+          });
+        }
+      } else if (type === 'FTE') {
+        // Detailed view - FTE column
+        if (fte > 0) {
+          teamsWithSkill.push({
+            team: team.team,
+            contractor: 0,
+            fte: fte,
+            total: fte
+          });
+        }
+      }
+    }
+  });
+  
+  // Sort by total descending
+  teamsWithSkill.sort((a, b) => b.total - a.total);
+  
+  // Calculate grand total
+  let totalContractors = 0;
+  let totalFTEs = 0;
+  teamsWithSkill.forEach(item => {
+    totalContractors += item.contractor;
+    totalFTEs += item.fte;
+  });
+  
+  // Build the content
+  let content = `
+    <div class="detail-title">
+      Grand Total - ${skillName} ${type === 'Combined' ? '' : '(' + type + ')'}
+    </div>
+    <div class="detail-item">
+      <span class="detail-label">Total Across All Teams:</span>
+      <span class="detail-value">${(totalContractors + totalFTEs).toFixed(1).replace('.0', '')}</span>
+    </div>
+  `;
+  
+  if (type === 'Combined') {
+    content += `
+      <div class="detail-item">
+        <span class="detail-label">Total Contractors:</span>
+        <span class="detail-value">${totalContractors.toFixed(1).replace('.0', '')} CTR</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Total FTEs:</span>
+        <span class="detail-value">${totalFTEs.toFixed(1).replace('.0', '')} FTE</span>
+      </div>
+    `;
+  }
+  
+  content += `
+    <div style="margin-top: 20px; padding-top: 16px; border-top: 2px solid #e0e0e0;">
+      <div style="font-weight: 600; margin-bottom: 12px; color: #666;">Breakdown by Team:</div>
+  `;
+  
+  teamsWithSkill.forEach(item => {
+    if (type === 'Combined') {
+      content += `
+        <div class="detail-item" style="margin-bottom: 8px;">
+          <span class="detail-label" style="min-width: 180px;">${item.team}:</span>
+          <span class="detail-value">${item.total.toFixed(1).replace('.0', '')} (${item.contractor.toFixed(1).replace('.0', '')} CTR / ${item.fte.toFixed(1).replace('.0', '')} FTE)</span>
+        </div>
+      `;
+    } else if (type === 'Contractor') {
+      content += `
+        <div class="detail-item" style="margin-bottom: 8px;">
+          <span class="detail-label" style="min-width: 180px;">${item.team}:</span>
+          <span class="detail-value">${item.contractor.toFixed(1).replace('.0', '')} CTR</span>
+        </div>
+      `;
+    } else if (type === 'FTE') {
+      content += `
+        <div class="detail-item" style="margin-bottom: 8px;">
+          <span class="detail-label" style="min-width: 180px;">${item.team}:</span>
+          <span class="detail-value">${item.fte.toFixed(1).replace('.0', '')} FTE</span>
+        </div>
+      `;
+    }
+  });
+  
+  content += '</div>';
+  
+  document.getElementById('detail-content').innerHTML = content;
+  document.getElementById('detail-panel').classList.add('visible');
+  
+  // Scroll to the detail panel
+  document.getElementById('detail-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').classList.remove('visible');
+}
+
+// Initialize
+updateSummary();
+renderTable();
+</script>
+</body></html>
