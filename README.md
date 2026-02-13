@@ -1,0 +1,1 @@
+POC on a chart that shows a heatmap of how many of a given skillset are assigned to each enterrpise applications product team.  The headcount numbers are an approximation basedon January counts. Pure management roles have been excluded to focus on development skillsets
